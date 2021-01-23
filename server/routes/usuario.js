@@ -3,11 +3,19 @@ const bcrypt = require('bcrypt');
 const _ = require('underscore');
 const app = express();
 const Usuario = require('../models/usuario');
+const { verificaToken, verificaAdmin } = require('../middlewares/authentication');
 
 
+//OBTENER USUARIOSS
+//dispara verificaToken cuando se quiera acceder a la ruta
+app.get('/usuario', verificaToken, (req, res) => {
 
+    /*return res.json({
+        usuario: req.usuario,
+        nombre: req.usuario.nombre,
+        email: req.usuario.email
+    })*/
 
-app.get('/usuario', function(req, res) {
     //query: parametro opcional concatenado con ?nombreVariable=
     let desde = req.query.desde || 0;
     desde = Number(desde);
@@ -37,10 +45,10 @@ app.get('/usuario', function(req, res) {
             })
 
         })
-})
+});
 
 //save 
-app.post('/usuario', function(req, res) {
+app.post('/usuario', [verificaToken, verificaAdmin], function(req, res) {
     let body = req.body;
 
     let usuario = new Usuario({
@@ -65,11 +73,10 @@ app.post('/usuario', function(req, res) {
     });
 });
 //actualizar 
-app.put('/usuario/:id', function(req, res) {
+app.put('/usuario/:id', [verificaToken, verificaAdmin], function(req, res) {
     let id = req.params.id;
     //arreglo con los parametros que si se pueden editar
     let body = _.pick(req.body, ['nombre', 'email', 'img', 'role', 'estado']);
-
 
 
     Usuario.findByIdAndUpdate(id, body, { new: true, runValidators: true }, (err, usuarioDB) => {
@@ -88,7 +95,7 @@ app.put('/usuario/:id', function(req, res) {
 });
 
 //borrado fisico del documento de la BD
-app.delete('/usuario/:id', function(req, res) {
+app.delete('/usuario/:id', verificaToken, function(req, res) {
     let id = req.params.id;
     let body = _.pick(req.body, ['nombre', 'email', 'img', 'role', 'estado']);
 
@@ -104,16 +111,12 @@ app.delete('/usuario/:id', function(req, res) {
         estado: false
     }
     Usuario.findByIdAndUpdate(id, cambiaEstado, { new: true }, (err, usuarioBorrado) => {
-
-
         if (err) {
             return res.status(400).json({
                 ok: false,
                 err
             });
         }
-
-
 
         if (!usuarioBorrado) {
             return res.status(400).json({
